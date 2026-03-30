@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShutUp Chat 🤐</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    /* ═══ 공통 ═══ */
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: flex; }
+    .btn {
+      padding: 14px 28px; border-radius: 14px; border: none;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .btn:hover { transform: scale(1.03); opacity: 0.9; }
+    .btn-primary { background: linear-gradient(135deg, #4d96ff, #6b5ce7); color: #fff; }
+    .btn-secondary { background: #2a2a3a; color: #fff; }
+    .btn-success { background: linear-gradient(135deg, #4dff91, #36d986); color: #0a0a0f; }
+    .btn-danger { background: #ff4444; color: #fff; }
+
+    /* ═══ 화면 1: 방 만들기 ═══ */
+    #screenCreate {
+      flex-direction: column; align-items: center; justify-content: center; gap: 32px;
+    }
+    #screenCreate h1 {
+      font-size: 52px; font-weight: 800;
+      background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    #screenCreate .subtitle { color: #666; font-size: 15px; margin-top: -20px; }
+    .create-form { width: 400px; display: flex; flex-direction: column; gap: 20px; }
+    .form-label { font-size: 13px; font-weight: 600; color: #888; margin-bottom: 6px; display: block; }
+    .form-input {
+      width: 100%; padding: 14px 18px; border-radius: 12px;
+      border: 1px solid #2a2a3a; background: #14141e; color: #fff;
+      font-size: 15px; outline: none; transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: #4d96ff; }
+
+    /* 캐릭터 선택 */
+    .avatar-picker { display: flex; gap: 12px; justify-content: center; }
+    .avatar-option {
+      width: 64px; height: 64px; border-radius: 50%; border: 3px solid #2a2a3a;
+      cursor: pointer; transition: all 0.2s; padding: 4px; background: #14141e;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .avatar-option:hover { border-color: #555; }
+    .avatar-option.selected { border-color: #4d96ff; box-shadow: 0 0 16px rgba(77,150,255,0.3); }
+    .avatar-option svg { width: 48px; height: 48px; }
+
+    /* 토글 */
+    .toggle-row { display: flex; gap: 16px; justify-content: center; }
+    .toggle-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 12px; border: 1px solid #2a2a3a;
+      background: #14141e; color: #fff; cursor: pointer; font-size: 14px;
+      transition: all 0.2s;
+    }
+    .toggle-btn.on { border-color: #4dff91; color: #4dff91; }
+    .toggle-btn.off { border-color: #ff4444; color: #ff4444; }
+    .toggle-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .toggle-btn.on .toggle-dot { background: #4dff91; }
+    .toggle-btn.off .toggle-dot { background: #ff4444; }
+
+    /* 시간 슬라이더 */
+    .duration-row { display: flex; align-items: center; gap: 16px; }
+    .duration-row input[type=range] {
+      flex: 1; accent-color: #4d96ff; height: 6px;
+    }
+    .duration-val { font-size: 20px; font-weight: 700; color: #4d96ff; min-width: 50px; text-align: right; }
+
+    /* ═══ 화면 2: 대기실 (방장) ═══ */
+    #screenWaiting {
+      flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+    }
+    .waiting-room-title { font-size: 28px; font-weight: 700; }
+    .waiting-timer {
+      font-size: 64px; font-weight: 800; color: #333;
+      font-variant-numeric: tabular-nums; letter-spacing: 2px;
+    }
+    .waiting-participants {
+      display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    }
+    .participant-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-radius: 20px; background: #1a1a24;
+      border: 1px solid #2a2a3a; font-size: 13px;
+    }
+    .participant-chip svg { width: 28px; height: 28px; }
+    .participant-chip .host-badge {
+      background: #ffd93d; color: #0a0a0f; font-size: 10px; font-weight: 700;
+      padding: 2px 6px; border-radius: 6px;
+    }
+    .waiting-actions { display: flex; gap: 12px; }
+
+    /* ═══ 화면 3: 참여자 입장 ═══ */
+    #screenJoin {
+      flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+    }
+    .join-room-title { font-size: 24px; font-weight: 600; }
+    .join-room-title span { color: #4d96ff; }
+    .current-members { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+    /* ═══ 화면 4: 화상회의 ═══ */
+    #screenMeeting { flex-direction: column; height: 100vh; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 24px; background: #12121a; border-bottom: 1px solid #222;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 16px; }
+    .topbar-title { font-weight: 600; font-size: 15px; }
+    .meeting-timer {
+      font-size: 14px; font-weight: 700; color: #4d96ff;
+      font-variant-numeric: tabular-nums;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .lock-timer { font-size: 13px; color: #ff6b6b; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .video-grid {
+      flex: 1; display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 12px; padding: 16px; align-content: center;
+    }
+    .video-card {
+      position: relative; border-radius: 16px; overflow: hidden;
+      background: #16161e; aspect-ratio: 16/9;
+      border: 3px solid transparent; transition: all 0.3s;
+    }
+    .video-card video {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      transition: filter 0.5s;
+    }
+    .video-card.speaking {
+      border-color: #4dff91;
+      box-shadow: 0 0 40px rgba(77,255,145,0.35), 0 0 80px rgba(77,255,145,0.1), inset 0 0 20px rgba(77,255,145,0.05);
+      animation: speakGlow 1.5s ease-in-out infinite alternate;
+    }
+    @keyframes speakGlow {
+      from { box-shadow: 0 0 30px rgba(77,255,145,0.3), 0 0 60px rgba(77,255,145,0.08); }
+      to { box-shadow: 0 0 50px rgba(77,255,145,0.45), 0 0 100px rgba(77,255,145,0.15); }
+    }
+    .video-card.shutdown video { filter: grayscale(100%) brightness(0.5); }
+    .video-card.shutdown { border-color: #ff4444; box-shadow: 0 0 20px rgba(255,68,68,0.2); }
+
+    .video-card .name-tag {
+      position: absolute; bottom: 10px; left: 10px;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+      padding: 5px 12px; border-radius: 16px; font-size: 12px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .name-tag svg { width: 22px; height: 22px; }
+    .name-tag .mic-dot { width: 7px; height: 7px; border-radius: 50%; background: #4dff91; transition: all 0.15s; }
+    .name-tag .mic-dot.muted { background: #ff4444; }
+    .name-tag .mic-dot.active { background: #4dff91; box-shadow: 0 0 8px #4dff91; animation: micPulse 0.6s ease-in-out infinite alternate; }
+    @keyframes micPulse { from { transform: scale(1); } to { transform: scale(1.5); } }
+
+    /* 뮤트 뱃지 */
+    .video-card .mute-badge {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(255,68,68,0.85); backdrop-filter: blur(8px);
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; z-index: 5;
+      animation: bounceIn 0.3s ease-out;
+    }
+
+    /* 볼륨 바 */
+    .video-card .volume-bar {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+      background: transparent; z-index: 5;
+    }
+    .video-card .volume-bar .volume-fill {
+      height: 100%; width: 0%; background: linear-gradient(90deg, #4dff91, #36d986);
+      border-radius: 0 2px 2px 0; transition: width 0.1s;
+    }
+
+    .video-card .speak-timer {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+      padding: 5px 10px; border-radius: 16px; font-size: 12px;
+      font-weight: 600; font-variant-numeric: tabular-nums;
+      display: none;
+    }
+    .speak-timer.active { display: block; }
+    .speak-timer.warning { color: #ffd93d; }
+    .speak-timer.danger { color: #ff4444; animation: pulse 0.5s infinite alternate; }
+
+    .video-card .shutdown-overlay {
+      position: absolute; inset: 0; display: none;
+      align-items: center; justify-content: center; flex-direction: column; gap: 8px;
+      background: rgba(0,0,0,0.35); z-index: 10;
+    }
+    .video-card.shutdown .shutdown-overlay { display: flex; }
+    .shutdown-overlay .sd-icon { font-size: 44px; animation: bounceIn 0.4s ease-out; }
+    .shutdown-overlay .sd-text { font-size: 14px; font-weight: 600; color: #ff6b6b; }
+
+    @keyframes pulse { from{opacity:1} to{opacity:0.4} }
+    @keyframes bounceIn { 0%{transform:scale(0);opacity:0} 60%{transform:scale(1.2)} 100%{transform:scale(1);opacity:1} }
+
+    /* 하단 컨트롤 */
+    .controls {
+      display: flex; align-items: center; justify-content: center; gap: 14px;
+      padding: 14px; background: #12121a; border-top: 1px solid #222;
+    }
+    .ctrl-btn {
+      width: 50px; height: 50px; border-radius: 50%; border: none;
+      font-size: 20px; cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ctrl-btn:hover { transform: scale(1.1); }
+    .ctrl-btn.on { background: #2a2a3a; color: #fff; }
+    .ctrl-btn.off { background: #ff4444; color: #fff; }
+    .ctrl-btn.leave { background: #ff4444; color: #fff; }
+    .ctrl-btn.dimmed {
+      background: #331111; color: #662222; cursor: not-allowed;
+      opacity: 0.5; pointer-events: none;
+    }
+
+    /* ═══ 토스트 ═══ */
+    .toast-container {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast {
+      background: rgba(20,20,30,0.95); backdrop-filter: blur(12px);
+      border: 1px solid #333; padding: 12px 24px; border-radius: 12px;
+      font-size: 14px; animation: slideDown 0.3s ease-out, fadeOut 0.3s ease-in 2.7s;
+      white-space: nowrap;
+    }
+    .toast.warn { border-color: #ff4444; }
+    @keyframes slideDown { from{transform:translateY(-20px);opacity:0} to{transform:translateY(0);opacity:1} }
+    @keyframes fadeOut { to{opacity:0} }
+
+    /* 복사 완료 */
+    .copied-popup {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+      background: #4dff91; color: #0a0a0f; padding: 10px 24px;
+      border-radius: 12px; font-weight: 600; font-size: 14px;
+      animation: slideDown 0.2s ease-out, fadeOut 0.3s ease-in 1.2s;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ 아바타 SVG 정의 ═══════════════════════ -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <!-- 1) 고양이 -->
+  <symbol id="avatar-cat" viewBox="0 0 100 100">
+    <circle cx="50" cy="54" r="34" fill="#FFD93D"/>
+    <polygon points="22,30 18,6 38,22" fill="#FFD93D"/>
+    <polygon points="78,30 82,6 62,22" fill="#FFD93D"/>
+    <polygon points="22,30 18,6 38,22" fill="none" stroke="#E8B800" stroke-width="2"/>
+    <polygon points="78,30 82,6 62,22" fill="none" stroke="#E8B800" stroke-width="2"/>
+    <circle cx="38" cy="48" r="5" fill="#333"/>
+    <circle cx="62" cy="48" r="5" fill="#333"/>
+    <circle cx="40" cy="46" r="1.5" fill="#fff"/>
+    <circle cx="64" cy="46" r="1.5" fill="#fff"/>
+    <ellipse cx="50" cy="58" rx="3" ry="2" fill="#FF8FA3"/>
+    <path d="M44,62 Q50,68 56,62" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+    <line x1="20" y1="52" x2="32" y2="54" stroke="#CCA800" stroke-width="1.5"/>
+    <line x1="20" y1="58" x2="32" y2="58" stroke="#CCA800" stroke-width="1.5"/>
+    <line x1="68" y1="54" x2="80" y2="52" stroke="#CCA800" stroke-width="1.5"/>
+    <line x1="68" y1="58" x2="80" y2="58" stroke="#CCA800" stroke-width="1.5"/>
+  </symbol>
+  <!-- 2) 곰 -->
+  <symbol id="avatar-bear" viewBox="0 0 100 100">
+    <circle cx="28" cy="28" r="14" fill="#C4956A"/>
+    <circle cx="72" cy="28" r="14" fill="#C4956A"/>
+    <circle cx="28" cy="28" r="8" fill="#A07050"/>
+    <circle cx="72" cy="28" r="8" fill="#A07050"/>
+    <circle cx="50" cy="54" r="34" fill="#C4956A"/>
+    <circle cx="38" cy="48" r="4.5" fill="#333"/>
+    <circle cx="62" cy="48" r="4.5" fill="#333"/>
+    <circle cx="40" cy="46.5" r="1.5" fill="#fff"/>
+    <circle cx="64" cy="46.5" r="1.5" fill="#fff"/>
+    <ellipse cx="50" cy="60" rx="10" ry="8" fill="#A07050"/>
+    <ellipse cx="50" cy="58" rx="4" ry="3" fill="#333"/>
+    <path d="M46,63 Q50,67 54,63" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round"/>
+  </symbol>
+  <!-- 3) 토끼 -->
+  <symbol id="avatar-bunny" viewBox="0 0 100 100">
+    <ellipse cx="38" cy="20" rx="9" ry="22" fill="#FFB5C8"/>
+    <ellipse cx="62" cy="20" rx="9" ry="22" fill="#FFB5C8"/>
+    <ellipse cx="38" cy="20" rx="5" ry="16" fill="#FF8FAA"/>
+    <ellipse cx="62" cy="20" rx="5" ry="16" fill="#FF8FAA"/>
+    <circle cx="50" cy="58" r="32" fill="#FFB5C8"/>
+    <circle cx="38" cy="52" r="4.5" fill="#333"/>
+    <circle cx="62" cy="52" r="4.5" fill="#333"/>
+    <circle cx="40" cy="50.5" r="1.5" fill="#fff"/>
+    <circle cx="64" cy="50.5" r="1.5" fill="#fff"/>
+    <ellipse cx="50" cy="62" rx="3" ry="2.5" fill="#FF6B8A"/>
+    <path d="M44,66 Q50,72 56,66" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="34" cy="62" r="6" fill="#FF8FAA" opacity="0.4"/>
+    <circle cx="66" cy="62" r="6" fill="#FF8FAA" opacity="0.4"/>
+  </symbol>
+  <!-- 4) 펭귄 -->
+  <symbol id="avatar-penguin" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="56" rx="32" ry="36" fill="#2C3E50"/>
+    <ellipse cx="50" cy="62" rx="22" ry="26" fill="#ECF0F1"/>
+    <circle cx="40" cy="46" r="5" fill="#fff"/>
+    <circle cx="60" cy="46" r="5" fill="#fff"/>
+    <circle cx="41" cy="46" r="3" fill="#333"/>
+    <circle cx="61" cy="46" r="3" fill="#333"/>
+    <circle cx="42" cy="45" r="1" fill="#fff"/>
+    <circle cx="62" cy="45" r="1" fill="#fff"/>
+    <path d="M46,56 L50,62 L54,56" fill="#FF9F43" stroke="#E67E22" stroke-width="1"/>
+    <path d="M18,55 Q12,70 24,75" fill="#2C3E50" stroke="none"/>
+    <path d="M82,55 Q88,70 76,75" fill="#2C3E50" stroke="none"/>
+  </symbol>
+  <!-- 5) 유령 -->
+  <symbol id="avatar-ghost" viewBox="0 0 100 100">
+    <path d="M50,10 C25,10 16,34 16,54 L16,82 L28,72 L38,82 L50,72 L62,82 L72,72 L84,82 L84,54 C84,34 75,10 50,10Z" fill="#E8E8F0"/>
+    <path d="M50,10 C25,10 16,34 16,54 L16,82 L28,72 L38,82 L50,72 L62,82 L72,72 L84,82 L84,54 C84,34 75,10 50,10Z" fill="none" stroke="#C8C8D8" stroke-width="2"/>
+    <circle cx="38" cy="44" r="7" fill="#333"/>
+    <circle cx="62" cy="44" r="7" fill="#333"/>
+    <circle cx="41" cy="42" r="2.5" fill="#fff"/>
+    <circle cx="65" cy="42" r="2.5" fill="#fff"/>
+    <ellipse cx="50" cy="58" rx="6" ry="5" fill="#C8C8D8"/>
+    <circle cx="30" cy="52" r="5" fill="#FFB5C8" opacity="0.3"/>
+    <circle cx="70" cy="52" r="5" fill="#FFB5C8" opacity="0.3"/>
+  </symbol>
+</svg>
+
+<!-- ═══════════════════════ 화면 1: 방 만들기 ═══════════════════════ -->
+<div id="screenCreate" class="screen active">
+  <h1>ShutUp Chat</h1>
+  <p class="subtitle">혼자 2분 넘게 떠들면 마이크가 꺼집니다 🤐</p>
+  <div class="create-form">
+    <div>
+      <label class="form-label">방 제목</label>
+      <input class="form-input" id="inputRoomTitle" placeholder="예: 주간 스탠드업" maxlength="40">
+    </div>
+    <div>
+      <label class="form-label">닉네임</label>
+      <input class="form-input" id="inputHostName" placeholder="닉네임 입력" maxlength="20">
+    </div>
+    <div>
+      <label class="form-label">프로필 캐릭터</label>
+      <div class="avatar-picker" id="hostAvatarPicker"></div>
+    </div>
+    <div>
+      <label class="form-label">회의 시간</label>
+      <div class="duration-row">
+        <input type="range" id="inputDuration" min="1" max="59" value="30">
+        <span class="duration-val" id="durationVal">30분</span>
+      </div>
+    </div>
+    <div>
+      <label class="form-label">입장 설정</label>
+      <div class="toggle-row">
+        <button class="toggle-btn on" id="createMicToggle" onclick="toggleCreateMic()">
+          <span class="toggle-dot"></span> 마이크 ON
+        </button>
+        <button class="toggle-btn on" id="createCamToggle" onclick="toggleCreateCam()">
+          <span class="toggle-dot"></span> 카메라 ON
+        </button>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="createRoom()" style="margin-top:8px">방 만들기</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 화면 2: 대기실 (방장) ═══════════════════════ -->
+<div id="screenWaiting" class="screen">
+  <div class="waiting-room-title" id="waitingTitle"></div>
+  <div class="waiting-timer" id="waitingTimer">00:00</div>
+  <div>
+    <label class="form-label" style="text-align:center">참여자</label>
+    <div class="waiting-participants" id="waitingParticipants"></div>
+  </div>
+  <div class="waiting-actions">
+    <button class="btn btn-success" id="btnStartMeeting" onclick="startMeeting()">▶ 회의 시작하기</button>
+    <button class="btn btn-secondary" onclick="shareLink()">🔗 회의 공유하기</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 화면 3: 참여자 입장 ═══════════════════════ -->
+<div id="screenJoin" class="screen">
+  <h1 style="font-size:36px;background:linear-gradient(135deg,#4d96ff,#6b5ce7);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ShutUp Chat</h1>
+  <div class="join-room-title">
+    <span id="joinRoomTitle"></span> 에 초대받았습니다
+  </div>
+  <div>
+    <label class="form-label" style="text-align:center">현재 참여 중</label>
+    <div class="current-members" id="joinCurrentMembers"></div>
+  </div>
+  <div class="create-form" style="width:360px">
+    <div>
+      <label class="form-label">닉네임</label>
+      <input class="form-input" id="inputJoinName" placeholder="닉네임 입력" maxlength="20">
+    </div>
+    <div>
+      <label class="form-label">프로필 캐릭터</label>
+      <div class="avatar-picker" id="joinAvatarPicker"></div>
+    </div>
+    <div>
+      <label class="form-label">입장 설정</label>
+      <div class="toggle-row">
+        <button class="toggle-btn on" id="joinMicToggle" onclick="toggleJoinMic()">
+          <span class="toggle-dot"></span> 마이크 ON
+        </button>
+        <button class="toggle-btn on" id="joinCamToggle" onclick="toggleJoinCam()">
+          <span class="toggle-dot"></span> 카메라 ON
+        </button>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="joinRoom()">참여하기</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 화면 4: 화상회의 ═══════════════════════ -->
+<div id="screenMeeting" class="screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-title" id="meetingTitle"></span>
+      <span class="meeting-timer" id="meetingTimer">00:00</span>
+    </div>
+    <div class="topbar-right">
+      <span class="lock-timer" id="lockTimerDisplay"></span>
+    </div>
+  </div>
+  <div class="video-grid" id="videoGrid"></div>
+  <div class="controls">
+    <button class="ctrl-btn on" id="btnMic" onclick="toggleMeetingMic()">🎤</button>
+    <button class="ctrl-btn on" id="btnCam" onclick="toggleMeetingCam()">📷</button>
+    <button class="ctrl-btn leave" onclick="leaveMeeting()">📞</button>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ═══════════════════════════════════
+// 아바타 목록
+// ═══════════════════════════════════
+const AVATARS = [
+  { id: 'cat', label: '고양이' },
+  { id: 'bear', label: '곰' },
+  { id: 'bunny', label: '토끼' },
+  { id: 'penguin', label: '펭귄' },
+  { id: 'ghost', label: '유령' }
+];
+
+function avatarSVGHTML(id, size = 48) {
+  return `<svg width="${size}" height="${size}"><use href="#avatar-${id}"/></svg>`;
+}
+
+function initAvatarPicker(containerId, stateKey) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  AVATARS.forEach((a, i) => {
+    const div = document.createElement('div');
+    div.className = 'avatar-option' + (i === 0 ? ' selected' : '');
+    div.innerHTML = avatarSVGHTML(a.id, 48);
+    div.onclick = () => {
+      c.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+      div.classList.add('selected');
+      state[stateKey] = a.id;
+    };
+    c.appendChild(div);
+  });
+  state[stateKey] = AVATARS[0].id;
+}
+
+// ═══════════════════════════════════
+// 설정
+// ═══════════════════════════════════
+const SPEAK_LIMIT_MS = 2 * 60 * 1000;
+const SILENCE_BREAK_MS = 10 * 1000;
+const SHUTDOWN_COOLDOWN_MS = 60 * 1000; // 1분 쿨다운
+const VOICE_THRESHOLD = 15;
+const DETECTION_INTERVAL_MS = 100;
+
+// ═══════════════════════════════════
+// 전역 상태
+// ═══════════════════════════════════
+const state = {
+  hostAvatar: 'cat', joinAvatar: 'cat',
+  createMic: true, createCam: true,
+  joinMic: true, joinCam: true,
+  roomId: null, isHost: false,
+  meetingStarted: false, meetingDuration: 30,
+  meetingStartTime: null
+};
+
+let socket;
+let localStream;
+let peers = {};
+let micEnabled = true, camEnabled = true;
+let isShutdown = false;
+let shutdownLockUntil = 0;
+let lockInterval = null;
+
+// 음성 감지
+let audioCtx, analyser, dataArray;
+let isSpeaking = false, speakStartTime = 0, accumulatedTime = 0;
+let lastSpeakTime = 0, silenceStartTime = 0, detectLoop = null;
+
+// 회의 타이머
+let meetingTimerInterval = null;
+
+// ═══════════════════════════════════
+// 초기화
+// ═══════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  initAvatarPicker('hostAvatarPicker', 'hostAvatar');
+
+  document.getElementById('inputDuration').oninput = (e) => {
+    document.getElementById('durationVal').textContent = e.target.value + '분';
+  };
+
+  // URL에 room 파라미터 있으면 → 참여 화면
+  const params = new URLSearchParams(location.search);
+  const roomId = params.get('room');
+  if (roomId) {
+    showJoinScreen(roomId);
+  }
+});
+
+// ═══════════════════════════════════
+// 화면 전환
+// ═══════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ═══════════════════════════════════
+// 토글 버튼들
+// ═══════════════════════════════════
+function toggleCreateMic() {
+  state.createMic = !state.createMic;
+  updateToggleBtn('createMicToggle', state.createMic, '마이크');
+}
+function toggleCreateCam() {
+  state.createCam = !state.createCam;
+  updateToggleBtn('createCamToggle', state.createCam, '카메라');
+}
+function toggleJoinMic() {
+  state.joinMic = !state.joinMic;
+  updateToggleBtn('joinMicToggle', state.joinMic, '마이크');
+}
+function toggleJoinCam() {
+  state.joinCam = !state.joinCam;
+  updateToggleBtn('joinCamToggle', state.joinCam, '카메라');
+}
+function updateToggleBtn(id, on, label) {
+  const btn = document.getElementById(id);
+  btn.className = 'toggle-btn ' + (on ? 'on' : 'off');
+  btn.innerHTML = `<span class="toggle-dot"></span> ${label} ${on ? 'ON' : 'OFF'}`;
+}
+
+// ═══════════════════════════════════
+// 화면 1 → 방 만들기
+// ═══════════════════════════════════
+async function createRoom() {
+  const title = document.getElementById('inputRoomTitle').value.trim() || '제목 없는 회의';
+  const userName = document.getElementById('inputHostName').value.trim() || `User-${Math.random().toString(36).slice(2,6)}`;
+  const duration = parseInt(document.getElementById('inputDuration').value);
+
+  // 미디어 스트림 획득
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  } catch { alert('카메라/마이크 권한이 필요합니다.'); return; }
+
+  localStream.getAudioTracks().forEach(t => t.enabled = state.createMic);
+  localStream.getVideoTracks().forEach(t => t.enabled = state.createCam);
+  micEnabled = state.createMic;
+  camEnabled = state.createCam;
+
+  socket = io();
+  setupSocketListeners();
+
+  // 서버에서 room-created 이벤트로 응답
+  socket.on('room-created', (res) => {
+    if (res.error) { alert(res.error); return; }
+    state.roomId = res.roomId;
+    state.isHost = true;
+    state.meetingDuration = duration;
+    showWaitingRoom(res.room, userName);
+  });
+
+  socket.on('connect', () => {
+    socket.emit('create-room', {
+      title: title, userName: userName, avatar: state.hostAvatar, duration: duration
+    });
+  });
+}
+
+function showWaitingRoom(room, myName) {
+  document.getElementById('waitingTitle').textContent = room.title;
+  renderWaitingParticipants(room.participants);
+  showScreen('screenWaiting');
+}
+
+function renderWaitingParticipants(participants) {
+  const c = document.getElementById('waitingParticipants');
+  c.innerHTML = '';
+  participants.forEach(p => {
+    const chip = document.createElement('div');
+    chip.className = 'participant-chip';
+    chip.innerHTML = avatarSVGHTML(p.avatar, 28) +
+      `<span>${p.userName}</span>` +
+      (p.isHost ? '<span class="host-badge">방장</span>' : '');
+    c.appendChild(chip);
+  });
+}
+
+// ═══════════════════════════════════
+// 회의 공유하기
+// ═══════════════════════════════════
+function shareLink() {
+  const url = `${location.origin}?room=${state.roomId}`;
+  navigator.clipboard.writeText(url).then(() => {
+    const popup = document.createElement('div');
+    popup.className = 'copied-popup';
+    popup.textContent = '✅ 링크가 복사되었습니다!';
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 1500);
+  }).catch(() => {
+    prompt('아래 링크를 복사하세요:', url);
+  });
+}
+
+// ═══════════════════════════════════
+// 회의 시작 (방장)
+// ═══════════════════════════════════
+function startMeeting() {
+  socket.emit('start-meeting');
+}
+
+function onMeetingStarted(data) {
+  state.meetingStarted = true;
+  state.meetingStartTime = data.startTime;
+  state.meetingDuration = data.duration;
+
+  document.getElementById('meetingTitle').textContent =
+    document.getElementById('waitingTitle')?.textContent ||
+    document.getElementById('joinRoomTitle')?.textContent || '회의';
+
+  showScreen('screenMeeting');
+  createLocalVideoCard();
+  setupVoiceDetection();
+  startMeetingTimer();
+
+  // 기존 피어들과 WebRTC 연결 (비디오 카드도 생성)
+  // 소켓 ID가 더 큰 쪽이 offer를 보냄 (충돌 방지)
+  for (const [userId, peer] of Object.entries(peers)) {
+    if (!peer.videoCard) {
+      createRemoteVideoCard(userId, peer.userName, peer.avatar);
+    }
+    if (!peer.pc) {
+      const shouldInitiate = socket.id > userId;
+      initWebRTC(userId, shouldInitiate);
+    }
+  }
+}
+
+// ═══════════════════════════════════
+// 참여자 입장 화면
+// ═══════════════════════════════════
+function showJoinScreen(roomId) {
+  state.roomId = roomId;
+
+  // REST API로 방 정보 조회 (소켓 불필요)
+  fetch('/api/room/' + roomId)
+    .then(r => r.json())
+    .then(res => {
+      if (res.error) {
+        alert(res.error);
+        location.href = '/';
+        return;
+      }
+      document.getElementById('joinRoomTitle').textContent = res.room.title;
+
+      const mc = document.getElementById('joinCurrentMembers');
+      mc.innerHTML = '';
+      res.room.participants.forEach(p => {
+        const chip = document.createElement('div');
+        chip.className = 'participant-chip';
+        chip.innerHTML = avatarSVGHTML(p.avatar, 28) +
+          `<span>${p.userName}</span>` +
+          (p.isHost ? '<span class="host-badge">방장</span>' : '');
+        mc.appendChild(chip);
+      });
+
+      initAvatarPicker('joinAvatarPicker', 'joinAvatar');
+      showScreen('screenJoin');
+    })
+    .catch(() => {
+      alert('서버에 연결할 수 없습니다.');
+      location.href = '/';
+    });
+}
+
+async function joinRoom() {
+  const userName = document.getElementById('inputJoinName').value.trim() || `User-${Math.random().toString(36).slice(2,6)}`;
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  } catch { alert('카메라/마이크 권한이 필요합니다.'); return; }
+
+  localStream.getAudioTracks().forEach(t => t.enabled = state.joinMic);
+  localStream.getVideoTracks().forEach(t => t.enabled = state.joinCam);
+  micEnabled = state.joinMic;
+  camEnabled = state.joinCam;
+
+  socket = io();
+  setupSocketListeners();
+
+  // 서버에서 room-joined 이벤트로 응답
+  socket.on('room-joined', (res) => {
+    if (res.error) { alert(res.error); return; }
+
+    // 기존 참가자를 peers에 등록
+    res.existingUsers.forEach(u => {
+      peers[u.userId] = { userName: u.userName, avatar: u.avatar, isHost: u.isHost, pc: null, videoCard: null };
+    });
+
+    if (res.room.meetingStarted) {
+      state.meetingStarted = true;
+      state.meetingStartTime = res.room.meetingStartTime;
+      state.meetingDuration = res.room.duration;
+      document.getElementById('meetingTitle').textContent = res.room.title;
+      showScreen('screenMeeting');
+      createLocalVideoCard();
+      setupVoiceDetection();
+      startMeetingTimer();
+
+      // 기존 참가자 전원과 1:1 WebRTC 연결 (소켓 ID 비교로 initiator 결정)
+      res.existingUsers.forEach(u => {
+        createRemoteVideoCard(u.userId, u.userName, u.avatar);
+        const shouldInitiate = socket.id > u.userId;
+        initWebRTC(u.userId, shouldInitiate);
+      });
+    } else {
+      document.getElementById('waitingTitle').textContent = res.room.title;
+      renderWaitingParticipants(res.room.participants);
+      document.getElementById('btnStartMeeting').style.display = 'none';
+      showScreen('screenWaiting');
+    }
+  });
+
+  socket.on('connect', () => {
+    socket.emit('join-room', {
+      roomId: state.roomId,
+      userName: userName,
+      avatar: state.joinAvatar
+    });
+  });
+}
+
+// ═══════════════════════════════════
+// 소켓 이벤트
+// ═══════════════════════════════════
+function setupSocketListeners() {
+  socket.on('user-joined', (data) => {
+    showToast(`${data.userName} 입장! 👋`);
+    peers[data.userId] = { userName: data.userName, avatar: data.avatar, pc: null, videoCard: null };
+
+    // 대기실이면 참가자 목록 업데이트
+    if (!state.meetingStarted) {
+      fetch('/api/room/' + state.roomId)
+        .then(r => r.json())
+        .then(res => { if (!res.error) renderWaitingParticipants(res.room.participants); })
+        .catch(() => {});
+    } else {
+      createRemoteVideoCard(data.userId, data.userName, data.avatar);
+      // 소켓 ID 비교로 initiator 결정 (N명 mesh에서도 충돌 없음)
+      const shouldInitiate = socket.id > data.userId;
+      initWebRTC(data.userId, shouldInitiate);
+    }
+  });
+
+  socket.on('meeting-started', (data) => {
+    onMeetingStarted(data);
+  });
+
+  socket.on('offer', async (data) => {
+    try {
+      if (!peers[data.from]) {
+        peers[data.from] = { userName: 'User', avatar: 'cat', pc: null, videoCard: null };
+      }
+      if (!peers[data.from].videoCard && state.meetingStarted) {
+        createRemoteVideoCard(data.from, peers[data.from].userName, peers[data.from].avatar);
+      }
+
+      // 이미 PC가 있고 충돌 상태(양쪽 offer)면 기존 PC 폐기 후 새로 생성
+      if (peers[data.from].pc) {
+        const sigState = peers[data.from].pc.signalingState;
+        if (sigState === 'have-local-offer' || sigState === 'closed') {
+          console.log('[WebRTC] 충돌 감지, PC 재생성:', sigState);
+          peers[data.from].pc.close();
+          peers[data.from].pc = null;
+        }
+      }
+
+      if (!peers[data.from].pc) {
+        initWebRTC(data.from, false);
+      }
+      const peer = peers[data.from];
+      await peer.pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+      const answer = await peer.pc.createAnswer();
+      await peer.pc.setLocalDescription(answer);
+      socket.emit('answer', { to: data.from, answer: answer });
+      console.log('[WebRTC] answer 전송 완료 →', data.from.slice(0,8));
+    } catch (e) {
+      console.error('[offer 처리 에러]', e);
+    }
+  });
+
+  socket.on('answer', async (data) => {
+    try {
+      const peer = peers[data.from];
+      if (peer?.pc) await peer.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+    } catch (e) {
+      console.error('[answer 처리 에러]', e);
+    }
+  });
+
+  socket.on('ice-candidate', async (data) => {
+    const peer = peers[data.from];
+    if (peer?.pc) { try { await peer.pc.addIceCandidate(data.candidate); } catch {} }
+  });
+
+  socket.on('user-left', (data) => {
+    showToast(`${peers[data.userId]?.userName || 'User'} 퇴장`);
+    if (peers[data.userId]?.pc) peers[data.userId].pc.close();
+    peers[data.userId]?.videoCard?.remove();
+    delete peers[data.userId];
+  });
+
+  socket.on('user-mic-shutdown', (data) => {
+    showToast(`🤐 ${data.userName} 마이크 셧다운!`, 'warn');
+    const peer = peers[data.userId];
+    if (peer?.videoCard) {
+      peer.videoCard.classList.add('shutdown');
+      peer.videoCard.classList.remove('speaking');
+    }
+  });
+
+  socket.on('user-mic-restored', (data) => {
+    const peer = peers[data.userId];
+    if (peer?.videoCard) peer.videoCard.classList.remove('shutdown');
+  });
+
+  socket.on('user-speaking-state', (data) => {
+    const peer = peers[data.userId];
+    if (peer?.videoCard && !peer.videoCard.classList.contains('shutdown')) {
+      peer.videoCard.classList.toggle('speaking', data.isSpeaking);
+      // mic-dot 애니메이션
+      const micDot = peer.videoCard.querySelector('.mic-dot');
+      if (micDot) micDot.classList.toggle('active', data.isSpeaking);
+    }
+  });
+
+  // 상대방 마이크 ON/OFF 표시
+  socket.on('user-mic-toggle', (data) => {
+    const peer = peers[data.userId];
+    if (peer?.videoCard) {
+      const micDot = peer.videoCard.querySelector('.mic-dot');
+      if (micDot) {
+        micDot.classList.toggle('muted', !data.micOn);
+        micDot.classList.remove('active');
+      }
+      // 마이크 OFF면 뮤트 뱃지 표시
+      let badge = peer.videoCard.querySelector('.mute-badge');
+      if (!data.micOn) {
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'mute-badge';
+          badge.textContent = '🔇';
+          peer.videoCard.appendChild(badge);
+        }
+      } else {
+        if (badge) badge.remove();
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════
+// WebRTC
+// ═══════════════════════════════════
+function initWebRTC(userId, isInitiator) {
+  console.log('[WebRTC] initWebRTC', userId.slice(0,8), isInitiator ? '(initiator)' : '(receiver)');
+
+  const config = { iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    // 무료 TURN 서버 (실서버 배포 시 필수)
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ]};
+  const pc = new RTCPeerConnection(config);
+  peers[userId].pc = pc;
+
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+  pc.ontrack = (e) => {
+    console.log('[WebRTC] ontrack 수신! →', userId.slice(0,8), 'streams:', e.streams.length);
+    const card = peers[userId]?.videoCard;
+    if (card) {
+      const video = card.querySelector('video');
+      if (video) {
+        video.srcObject = e.streams[0];
+        video.play().catch(() => {});
+      }
+    }
+  };
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) socket.emit('ice-candidate', { to: userId, candidate: e.candidate });
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    console.log('[WebRTC] ICE state:', pc.iceConnectionState, '→', userId.slice(0,8));
+  };
+
+  pc.onconnectionstatechange = () => {
+    console.log('[WebRTC] connection state:', pc.connectionState, '→', userId.slice(0,8));
+    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      peers[userId]?.videoCard?.remove();
+      pc.close();
+      delete peers[userId];
+    }
+  };
+
+  if (isInitiator) {
+    pc.createOffer().then(offer => {
+      return pc.setLocalDescription(offer).then(() => {
+        console.log('[WebRTC] offer 전송 →', userId.slice(0,8));
+        socket.emit('offer', { to: userId, offer: offer });
+      });
+    }).catch(e => console.error('[offer 생성 에러]', e));
+  }
+}
+
+// ═══════════════════════════════════
+// 비디오 카드
+// ═══════════════════════════════════
+function createLocalVideoCard() {
+  const grid = document.getElementById('videoGrid');
+  const card = document.createElement('div');
+  card.className = 'video-card';
+  card.id = 'card-local';
+  card.dataset.local = 'true';
+
+  const myAvatar = state.isHost ? state.hostAvatar : state.joinAvatar;
+  const myName = state.isHost ?
+    (document.getElementById('inputHostName').value.trim() || 'Me') :
+    (document.getElementById('inputJoinName').value.trim() || 'Me');
+
+  card.innerHTML = `
+    <video autoplay playsinline muted></video>
+    <div class="name-tag">
+      ${avatarSVGHTML(myAvatar, 22)}
+      <span class="mic-dot ${micEnabled ? '' : 'muted'}"></span>
+      ${myName} (나)
+    </div>
+    <div class="speak-timer"></div>
+    <div class="volume-bar"><div class="volume-fill"></div></div>
+    <div class="shutdown-overlay">
+      <div class="sd-icon">🤐</div>
+      <div class="sd-text">마이크 셧다운! 1분 후 복구 가능</div>
+    </div>
+  `;
+  card.querySelector('video').srcObject = localStream;
+  grid.appendChild(card);
+
+  // 초기 마이크/카메라 버튼 상태
+  updateMicBtn();
+  updateCamBtn();
+}
+
+function createRemoteVideoCard(userId, userName, avatar) {
+  const grid = document.getElementById('videoGrid');
+  const card = document.createElement('div');
+  card.className = 'video-card';
+  card.id = `card-${userId}`;
+
+  card.innerHTML = `
+    <video autoplay playsinline></video>
+    <div class="name-tag">
+      ${avatarSVGHTML(avatar || 'cat', 22)}
+      <span class="mic-dot"></span>
+      ${userName}
+    </div>
+    <div class="speak-timer"></div>
+    <div class="shutdown-overlay">
+      <div class="sd-icon">🤐</div>
+      <div class="sd-text">마이크 셧다운!</div>
+    </div>
+  `;
+  grid.appendChild(card);
+  if (peers[userId]) peers[userId].videoCard = card;
+  return card;
+}
+
+// ═══════════════════════════════════
+// 음성 감지 (Web Audio API)
+// ═══════════════════════════════════
+async function setupVoiceDetection() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // 브라우저 정책: 유저 인터랙션 후 resume 필수
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+  }
+  console.log('[음성감지] AudioContext state:', audioCtx.state);
+
+  const source = audioCtx.createMediaStreamSource(localStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.4;
+  source.connect(analyser);
+
+  // 시간 도메인 데이터 사용 (주파수보다 음성 감지에 더 정확)
+  dataArray = new Float32Array(analyser.fftSize);
+
+  detectLoop = setInterval(detectVoice, DETECTION_INTERVAL_MS);
+  console.log('[음성감지] 감지 루프 시작');
+}
+
+function getVoiceLevel() {
+  analyser.getFloatTimeDomainData(dataArray);
+  // RMS (Root Mean Square) 계산 — 실제 음량을 정확하게 측정
+  let sum = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    sum += dataArray[i] * dataArray[i];
+  }
+  const rms = Math.sqrt(sum / dataArray.length);
+  // dB로 변환 (0~1 범위를 0~100 정도로 스케일링)
+  return Math.max(0, (20 * Math.log10(rms) + 60)) ; // -60dB ~ 0dB → 0~60
+}
+
+// 시각적 speaking 상태 (상대방에게 보내는 용도)
+let visualSpeaking = false;
+
+function detectVoice() {
+  if (isShutdown || !micEnabled) return;
+
+  const level = getVoiceLevel();
+  const now = Date.now();
+  const localCard = document.getElementById('card-local');
+  const THRESHOLD = 15;  // 민감도 낮춤 (배경소음 무시)
+  const voiceNow = level > THRESHOLD;
+
+  // 볼륨 바 + mic-dot 실시간 업데이트
+  if (localCard) {
+    const fill = localCard.querySelector('.volume-fill');
+    if (fill) fill.style.width = Math.min(100, Math.max(0, (level - 5) * 2)) + '%';
+    const micDot = localCard.querySelector('.mic-dot');
+    if (micDot && !micDot.classList.contains('muted')) {
+      micDot.classList.toggle('active', voiceNow);
+    }
+  }
+
+  if (voiceNow) {
+    // ── 소리 감지됨 ──
+
+    // 타이머 로직: 새 발화 시작 판단
+    if (!isSpeaking) {
+      if (silenceStartTime > 0 && (now - silenceStartTime) > SILENCE_BREAK_MS) {
+        accumulatedTime = 0; // 10초 넘게 쉬었으면 타이머 리셋
+      }
+      isSpeaking = true;
+      speakStartTime = now;
+    }
+
+    lastSpeakTime = now;
+    silenceStartTime = 0;
+
+    // 시각적: 테두리 활성화 + 상대방에게 전달
+    if (localCard) localCard.classList.add('speaking');
+    if (!visualSpeaking) {
+      visualSpeaking = true;
+      socket.emit('speaking-state', true);
+    }
+
+    // 타이머 업데이트
+    const total = accumulatedTime + (now - speakStartTime);
+    updateSpeakTimer(localCard, total);
+    if (total >= SPEAK_LIMIT_MS) triggerShutdown();
+
+  } else {
+    // ── 정적 ──
+
+    // 0.3초 이상 정적이면 시각적 speaking 해제
+    const sinceLast = now - lastSpeakTime;
+    if (sinceLast > 300 && visualSpeaking) {
+      visualSpeaking = false;
+      socket.emit('speaking-state', false);
+      if (localCard) localCard.classList.remove('speaking');
+    }
+
+    // 타이머 로직: 발화 중이었다면
+    if (isSpeaking) {
+      if (silenceStartTime === 0) silenceStartTime = now;
+      const silenceDuration = now - silenceStartTime;
+
+      if (silenceDuration > SILENCE_BREAK_MS) {
+        // 10초 넘게 정적 → 타이머 완전 리셋 + 표시도 0으로
+        accumulatedTime = 0;
+        isSpeaking = false;
+        speakStartTime = 0;
+        silenceStartTime = 0;
+        if (localCard) {
+          const t = localCard.querySelector('.speak-timer');
+          if (t) {
+            t.textContent = '0:00 / 2:00';
+            t.classList.remove('active', 'warning', 'danger');
+          }
+        }
+      } else {
+        // 10초 내 정적: 타이머는 계속 진행
+        const total = accumulatedTime + (now - speakStartTime);
+        updateSpeakTimer(localCard, total);
+        if (total >= SPEAK_LIMIT_MS) triggerShutdown();
+      }
+    }
+  }
+}
+
+function updateSpeakTimer(card, totalMs) {
+  if (!card) return;
+  const t = card.querySelector('.speak-timer');
+  if (!t) return;
+  const elapsed = Math.min(totalMs, SPEAK_LIMIT_MS);
+  const remaining = SPEAK_LIMIT_MS - elapsed;
+  const s = Math.floor(elapsed / 1000);
+  t.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')} / 2:00`;
+  t.classList.add('active');
+  t.classList.remove('warning','danger');
+  if (remaining < 30000) t.classList.add('danger');
+  else if (remaining < 60000) t.classList.add('warning');
+}
+
+// ═══════════════════════════════════
+// 셧다운 / 복구
+// ═══════════════════════════════════
+function triggerShutdown() {
+  isShutdown = true;
+  isSpeaking = false;
+  visualSpeaking = false;
+  accumulatedTime = 0;
+  speakStartTime = 0;
+  silenceStartTime = 0;
+
+  localStream.getAudioTracks().forEach(t => t.enabled = false);
+  micEnabled = false;
+
+  const localCard = document.getElementById('card-local');
+  if (localCard) {
+    localCard.classList.remove('speaking');
+    localCard.classList.add('shutdown');
+    const md = localCard.querySelector('.mic-dot');
+    if (md) md.classList.add('muted');
+    const st = localCard.querySelector('.speak-timer');
+    if (st) st.classList.remove('active');
+  }
+
+  // 버튼 dim
+  const btn = document.getElementById('btnMic');
+  btn.className = 'ctrl-btn dimmed';
+  btn.textContent = '🔇';
+
+  socket.emit('speaking-state', false);
+  socket.emit('mic-shutdown');
+  showToast('🤐 2분 초과! 마이크 셧다운 — 1분 후 복구 가능', 'warn');
+
+  shutdownLockUntil = Date.now() + SHUTDOWN_COOLDOWN_MS;
+  const lockEl = document.getElementById('lockTimerDisplay');
+
+  lockInterval = setInterval(() => {
+    const rem = Math.max(0, shutdownLockUntil - Date.now());
+    if (rem <= 0) {
+      clearInterval(lockInterval);
+      lockInterval = null;
+      lockEl.textContent = '';
+      restoreMic();
+      return;
+    }
+    lockEl.textContent = `🔒 ${Math.ceil(rem/1000)}초 후 마이크 복구`;
+  }, 200);
+}
+
+function restoreMic() {
+  isShutdown = false;
+  // 마이크를 자동으로 켜지 않음 — dim만 해제해서 사용자가 직접 켤 수 있게
+  const localCard = document.getElementById('card-local');
+  if (localCard) {
+    localCard.classList.remove('shutdown');
+  }
+
+  const btn = document.getElementById('btnMic');
+  btn.className = 'ctrl-btn off';
+  btn.textContent = '🔇';
+
+  socket.emit('mic-restored');
+  showToast('🎤 마이크 복구 가능! 버튼을 눌러 켜세요');
+}
+
+// ═══════════════════════════════════
+// 회의 컨트롤
+// ═══════════════════════════════════
+function toggleMeetingMic() {
+  if (isShutdown) return;
+  micEnabled = !micEnabled;
+  localStream.getAudioTracks().forEach(t => t.enabled = micEnabled);
+  updateMicBtn();
+
+  const localCard = document.getElementById('card-local');
+  const md = localCard?.querySelector('.mic-dot');
+  if (md) md.classList.toggle('muted', !micEnabled);
+
+  // 상대방에게 마이크 상태 알림
+  socket.emit('mic-toggle', micEnabled);
+
+  if (!micEnabled) {
+    accumulatedTime = 0;
+    isSpeaking = false;
+    visualSpeaking = false;
+    speakStartTime = 0;
+    silenceStartTime = 0;
+    socket.emit('speaking-state', false);
+    if (localCard) {
+      localCard.classList.remove('speaking');
+      const st = localCard.querySelector('.speak-timer');
+      if (st) st.classList.remove('active','warning','danger');
+    }
+  }
+}
+
+function toggleMeetingCam() {
+  camEnabled = !camEnabled;
+  localStream.getVideoTracks().forEach(t => t.enabled = camEnabled);
+  updateCamBtn();
+}
+
+function updateMicBtn() {
+  const btn = document.getElementById('btnMic');
+  if (isShutdown) { btn.className = 'ctrl-btn dimmed'; btn.textContent = '🔇'; return; }
+  btn.className = 'ctrl-btn ' + (micEnabled ? 'on' : 'off');
+  btn.textContent = micEnabled ? '🎤' : '🔇';
+}
+
+function updateCamBtn() {
+  const btn = document.getElementById('btnCam');
+  btn.className = 'ctrl-btn ' + (camEnabled ? 'on' : 'off');
+  btn.textContent = camEnabled ? '📷' : '🚫';
+}
+
+function leaveMeeting() {
+  if (detectLoop) clearInterval(detectLoop);
+  if (lockInterval) clearInterval(lockInterval);
+  if (meetingTimerInterval) clearInterval(meetingTimerInterval);
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  if (audioCtx) audioCtx.close();
+  Object.keys(peers).forEach(id => {
+    if (peers[id].pc) peers[id].pc.close();
+    if (peers[id].videoCard) peers[id].videoCard.remove();
+  });
+  peers = {};
+  if (socket) socket.disconnect();
+  document.getElementById('videoGrid').innerHTML = '';
+  location.href = '/';
+}
+
+// ═══════════════════════════════════
+// 회의 타이머
+// ═══════════════════════════════════
+function startMeetingTimer() {
+  const el = document.getElementById('meetingTimer');
+  meetingTimerInterval = setInterval(() => {
+    if (!state.meetingStartTime) return;
+    const elapsed = Date.now() - state.meetingStartTime;
+    const totalMs = state.meetingDuration * 60 * 1000;
+    const remaining = Math.max(0, totalMs - elapsed);
+
+    const min = Math.floor(remaining / 60000);
+    const sec = Math.floor((remaining % 60000) / 1000);
+    el.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+
+    if (remaining <= 60000) el.style.color = '#ff4444';
+    else if (remaining <= 5 * 60000) el.style.color = '#ffd93d';
+
+    if (remaining <= 0) {
+      clearInterval(meetingTimerInterval);
+      el.textContent = '00:00';
+      showToast('⏰ 회의 시간이 종료되었습니다!', 'warn');
+    }
+  }, 1000);
+}
+
+// ═══════════════════════════════════
+// 토스트
+// ═══════════════════════════════════
+function showToast(msg, type) {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'warn' ? ' warn' : '');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+</script>
+</body>
+</html>

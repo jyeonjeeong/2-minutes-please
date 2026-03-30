@@ -1,0 +1,16 @@
+{
+  "name": "shutup-chat",
+  "version": "1.0.0",
+  "description": "화상채팅 - 혼자 2분 이상 말하면 마이크 강제 OFF",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
