@@ -1,5 +1,5 @@
 {
-  "name": "shutup-chat",
+  "name": "2minutes-please",
   "version": "1.0.0",
   "description": "화상채팅 - 혼자 2분 이상 말하면 마이크 강제 OFF",
   "main": "server.js",

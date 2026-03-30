@@ -194,5 +194,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log('\n🤐 ShutUp Chat 서버 실행 중: http://localhost:' + PORT + '\n');
+  console.log('\n🤐 2분만 서버 실행 중: http://localhost:' + PORT + '\n');
 });
