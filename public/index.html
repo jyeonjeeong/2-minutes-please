@@ -569,15 +569,30 @@ async function createRoom() {
   const userName = document.getElementById('inputHostName').value.trim() || `User-${Math.random().toString(36).slice(2,6)}`;
   const duration = parseInt(document.getElementById('inputDuration').value);
 
-  // 미디어 스트림 획득
+  // 미디어 스트림 획득 (기기 없거나 권한 거부 시에도 진행)
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  } catch { alert('카메라/마이크 권한이 필요합니다.'); return; }
+  } catch {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      } catch {
+        // 카메라/마이크 모두 없거나 권한 거부 — 빈 스트림으로 진행
+        localStream = new MediaStream();
+      }
+    }
+  }
 
-  localStream.getAudioTracks().forEach(t => t.enabled = state.createMic);
-  localStream.getVideoTracks().forEach(t => t.enabled = state.createCam);
-  micEnabled = state.createMic;
-  camEnabled = state.createCam;
+  if (localStream.getAudioTracks().length > 0) {
+    localStream.getAudioTracks().forEach(t => t.enabled = state.createMic);
+  }
+  if (localStream.getVideoTracks().length > 0) {
+    localStream.getVideoTracks().forEach(t => t.enabled = state.createCam);
+  }
+  micEnabled = localStream.getAudioTracks().length > 0 && state.createMic;
+  camEnabled = localStream.getVideoTracks().length > 0 && state.createCam;
 
   socket = io();
   setupSocketListeners();
@@ -709,12 +724,26 @@ async function joinRoom() {
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  } catch { alert('카메라/마이크 권한이 필요합니다.'); return; }
+  } catch {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      } catch {
+        localStream = new MediaStream();
+      }
+    }
+  }
 
-  localStream.getAudioTracks().forEach(t => t.enabled = state.joinMic);
-  localStream.getVideoTracks().forEach(t => t.enabled = state.joinCam);
-  micEnabled = state.joinMic;
-  camEnabled = state.joinCam;
+  if (localStream.getAudioTracks().length > 0) {
+    localStream.getAudioTracks().forEach(t => t.enabled = state.joinMic);
+  }
+  if (localStream.getVideoTracks().length > 0) {
+    localStream.getVideoTracks().forEach(t => t.enabled = state.joinCam);
+  }
+  micEnabled = localStream.getAudioTracks().length > 0 && state.joinMic;
+  camEnabled = localStream.getVideoTracks().length > 0 && state.joinCam;
 
   socket = io();
   setupSocketListeners();
